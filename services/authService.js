@@ -1,9 +1,9 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import User from "../models/userModel.js";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/userModel.js");
 
 // Signup Service
-export const signupUser = async ({ fullName, email, password }) => {
+const signupUser = async ({ fullName, email, password }) => {
   try {
     console.log("Signup request received:", { fullName, email });
 
@@ -48,7 +48,7 @@ export const signupUser = async ({ fullName, email, password }) => {
   }
 };
 
-export const loginUser = async ({ email, password }) => {
+const loginUser = async ({ email, password }) => {
   try {
     const user = await User.findOne({ email });
     if (!user) throw new Error("User not found");
@@ -77,4 +77,10 @@ const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
     expiresIn: "1h",
   });
+};
+
+// Export functions using CommonJS
+module.exports = {
+  signupUser,
+  loginUser,
 };
