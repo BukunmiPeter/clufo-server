@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const StatusEnum = ["awaiting", "onboarded", "probation", "onboarding"];
+const StatusEnum = ["awaiting", "active", "probation", "onboarding"];
 
 const memberSchema = new mongoose.Schema({
   playerPic: String,
