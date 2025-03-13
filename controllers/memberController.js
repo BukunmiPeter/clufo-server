@@ -24,9 +24,13 @@ const deleteMemberController = async (req, res) => {
   res.status(response.success ? 200 : 400).json(response);
 };
 const getAllMembersController = async (req, res) => {
-  const response = await getAllMembers();
+  const { search, ...filters } = req.query;
+
+  const response = await getAllMembers(filters, search);
+
   res.status(response.success ? 200 : 400).json(response);
 };
+
 const getMemberController = async (req, res) => {
   const response = await getMember(req.params.id);
   res.status(response.success ? 200 : 400).json(response);

@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const StatusEnum = ["awaiting", "onboarded", "probation", "onboarding"];
+
 const memberSchema = new mongoose.Schema({
   playerPic: String,
   firstName: String,
@@ -35,6 +37,11 @@ const memberSchema = new mongoose.Schema({
   membershipType: String,
   membershipExpiryDate: String,
   paymentStat: String,
+  status: {
+    type: String,
+    enum: StatusEnum,
+    default: "awaiting",
+  },
   customFields: {
     type: Map,
     of: mongoose.Schema.Types.Mixed, // Allows flexible values

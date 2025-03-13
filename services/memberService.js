@@ -69,9 +69,26 @@ const deleteMember = async (id) => {
     };
   }
 };
-const getAllMembers = async () => {
+const getAllMembers = async (filters = {}, search = "") => {
   try {
-    const members = await Member.find();
+    const searchRegex = search ? new RegExp(search, "i") : null;
+
+    const searchFilter = searchRegex
+      ? {
+          $or: [
+            { firstName: searchRegex },
+            { lastName: searchRegex },
+            { email: searchRegex },
+          ],
+        }
+      : {};
+
+    const query = {
+      ...filters,
+      ...searchFilter,
+    };
+
+    const members = await Member.find(query);
     return { success: true, data: members };
   } catch (error) {
     return { success: false, message: error.message };
