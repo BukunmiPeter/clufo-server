@@ -7,7 +7,6 @@ const {
 } = require("../services/memberService");
 
 const addMemberController = async (req, res) => {
-  console.log("addMemberController hit:", req.body); // <-- Add this log
   const response = await addMember(req.body);
   res.status(response.success ? 201 : 400).json(response);
 };

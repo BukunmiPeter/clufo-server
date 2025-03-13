@@ -78,7 +78,7 @@ const getAllMembers = async (filters = {}, search = "") => {
           $or: [
             { firstName: searchRegex },
             { lastName: searchRegex },
-            { email: searchRegex },
+            // { email: searchRegex },
           ],
         }
       : {};
