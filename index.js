@@ -8,6 +8,15 @@ const cors = require("cors");
 dotenv.config();
 const app = express();
 
+console.log(
+  "MAILGUN_API_KEY:",
+  process.env.MAILGUN_API_KEY ? "Loaded" : "Not Loaded"
+);
+console.log(
+  "MAILGUN_DOMAIN:",
+  process.env.MAILGUN_DOMAIN ? "Loaded" : "Not Loaded"
+);
+
 // Use CORS to allow all origins
 app.use(cors());
 
