@@ -28,13 +28,13 @@ const signupUser = async ({ fullName, email, password }) => {
       password: hashedPassword,
       verificationCode,
     });
-
+    console.log(verificationCode, "verification code");
     // Send verification email
-    const emailSent = await sendVerificationEmail(email, verificationCode);
-    if (!emailSent) {
-      console.error("Failed to send verification email for:", email);
-      throw new Error("Verification email could not be sent");
-    }
+    // const emailSent = await sendVerificationEmail(email, verificationCode);
+    // if (!emailSent) {
+    //   console.error("Failed to send verification email for:", email);
+    //   throw new Error("Verification email could not be sent");
+    // }
 
     const token = generateToken(user._id, user.role);
     console.log("Token generated:", token);
@@ -81,7 +81,7 @@ const generateToken = (userId, role) => {
   });
 };
 
-export const requestPasswordReset = async (email) => {
+const requestPasswordReset = async (email) => {
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -97,15 +97,17 @@ export const requestPasswordReset = async (email) => {
 
   // Send reset link via email
   const resetLink = `${process.env.FRONTEND_URL}/reset-password?code=${resetCode}`;
-  await sendEmail(
-    user.email,
-    "Password Reset Request",
-    `Click the link to reset your password: ${resetLink}`
-  );
+
+  console.log("resetcode", resetCode);
+  // await sendEmail(
+  //   user.email,
+  //   "Password Reset Request",
+  //   `Click the link to reset your password: ${resetLink}`
+  // );
 
   return { success: true, message: "Password reset link sent to email." };
 };
-export const verifyResetEmailRequest = async (code) => {
+const verifyResetEmailRequest = async (code) => {
   const user = await User.findOne({
     resetPasswordCode: code,
     resetPasswordExpires: { $gt: Date.now() },
@@ -121,9 +123,7 @@ export const verifyResetEmailRequest = async (code) => {
   };
 };
 
-import bcrypt from "bcrypt";
-
-export const resetPassword = async (code, newPassword) => {
+const resetPassword = async (code, newPassword) => {
   const user = await User.findOne({
     resetPasswordCode: code,
     resetPasswordExpires: { $gt: Date.now() },

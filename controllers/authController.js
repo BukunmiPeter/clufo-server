@@ -1,4 +1,10 @@
-const { signupUser, loginUser } = require("../services/authService.js");
+const {
+  signupUser,
+  loginUser,
+  requestPasswordReset,
+  verifyResetEmailRequest,
+  resetPassword,
+} = require("../services/authService.js");
 const {
   verifyUserService,
   resendVerificationService,
@@ -68,7 +74,7 @@ const resendVerification = async (req, res) => {
   }
 };
 
-export const requestReset = async (req, res) => {
+const requestReset = async (req, res) => {
   try {
     const { email } = req.body;
     const result = await requestPasswordReset(email);
@@ -80,9 +86,10 @@ export const requestReset = async (req, res) => {
       .json({ success: false, message: "An internal server error occurred." });
   }
 };
-export const verifyResetCode = async (req, res) => {
+const verifyResetCode = async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code } = req.body;
+    console.log("code", code);
     const result = await verifyResetEmailRequest(code);
     return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
@@ -92,7 +99,7 @@ export const verifyResetCode = async (req, res) => {
       .json({ success: false, message: "An internal server error occurred." });
   }
 };
-export const resetUserPassword = async (req, res) => {
+const resetUserPassword = async (req, res) => {
   try {
     const { code, newPassword } = req.body;
     const result = await resetPassword(code, newPassword);
