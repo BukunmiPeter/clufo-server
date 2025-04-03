@@ -74,7 +74,7 @@ const loginUser = async ({ email, password }) => {
     return {
       success: true,
       message: "Sign in successful",
-      data: { ...otherProps, token },
+      data: { ...otherProps, verified, token },
     };
   } catch (error) {
     return {
