@@ -8,6 +8,7 @@ const {
 
 const signupUser = async ({ fullName, email, password }) => {
   try {
+    // Check if the user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       console.log("User already exists:", email);
@@ -22,6 +23,21 @@ const signupUser = async ({ fullName, email, password }) => {
     // Generate verification code
     const verificationCode = crypto.randomBytes(20).toString("hex");
 
+    // Don't create the user yet, wait until email verification is successful
+    const emailSent = await sendVerificationEmail(email, verificationCode);
+
+    if (!emailSent || emailSent.message !== "Queued. Thank you.") {
+      console.error(
+        "❌ Failed to send verification email for:",
+        email,
+        emailSent
+      );
+      throw new Error("Verification email could not be sent");
+    } else {
+      console.log("✅ Verification email successfully sent to:", email);
+    }
+
+    // Now that the email is successfully sent, create the user
     const user = await User.create({
       fullName,
       email,
@@ -29,12 +45,6 @@ const signupUser = async ({ fullName, email, password }) => {
       verificationCode,
     });
     console.log(verificationCode, "verification code");
-    // Send verification email
-    // const emailSent = await sendVerificationEmail(email, verificationCode);
-    // if (!emailSent) {
-    //   console.error("Failed to send verification email for:", email);
-    //   throw new Error("Verification email could not be sent");
-    // }
 
     const token = generateToken(user._id, user.role);
     console.log("Token generated:", token);

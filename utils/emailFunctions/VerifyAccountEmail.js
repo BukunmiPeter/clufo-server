@@ -1,17 +1,43 @@
 const { sendEmail } = require("../emailServiceUtil");
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
-const sendVerificationEmail = async (email, code) => {
-  const FRONTEND_URL = process.env.FRONTEND_URL;
-  MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
-  const verificationLink = `${FRONTEND_URL}/verify-email?code=${code}`;
+async function sendVerificationEmail(email, verificationCode) {
+  try {
+    const sender = "No-Reply <postmaster@mail.clufo.ch>";
+    const subject = "Your Verification Code";
+    const verificationLink = `${FRONTEND_URL}/verify/${verificationCode}`;
 
-  return sendEmail({
-    sender: `"No-Reply" <no-reply@${MAILGUN_DOMAIN}>`,
-    recipient: email,
-    subject: "Verify Your Email",
-    messageTemplate: () =>
-      `<p>Click <a href='${verificationLink}'>here</a> to verify your email.</p>`,
-  });
-};
+    const messageTemplate = () => `
+      <p>Hello,</p>
+      
+      <p>Click the link below to verify your account:</p>
+      <p><a href="${verificationLink}" target="_blank">Verify your email</a></p>
+      <p>If you did not request this, please ignore this email.</p>
+      <p>Thank you,</p>
+      <p>Clufo Team</p>
+    `;
+
+    const emailSent = await sendEmail({
+      sender,
+      recipient: email,
+      subject,
+      messageTemplate,
+    });
+
+    if (!emailSent || emailSent.message !== "Queued. Thank you.") {
+      console.error(
+        "❌ Failed to send verification email for:",
+        email,
+        emailSent
+      );
+      return null;
+    }
+
+    return emailSent;
+  } catch (error) {
+    console.error("❌ Error sending verification email:", error.message);
+    return null;
+  }
+}
 
 module.exports = { sendVerificationEmail };
