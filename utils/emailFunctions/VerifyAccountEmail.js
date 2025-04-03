@@ -3,7 +3,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 async function sendVerificationEmail(email, verificationCode) {
   try {
-    const sender = "No-Reply <postmaster@mail.clufo.ch>";
+    const sender = "Clufo <postmaster@mail.clufo.ch>";
     const subject = "Your Verification Code";
     const verificationLink = `${FRONTEND_URL}/verify/${verificationCode}`;
 
