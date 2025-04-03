@@ -68,7 +68,7 @@ const loginUser = async ({ email, password }) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) throw new Error("Invalid credentials");
 
-    const { password: _, ...otherProps } = user.toObject(); // Convert to plain object for safe spreading
+    const { password: _, verified, ...otherProps } = user.toObject(); // Convert to plain object for safe spreading
     const token = generateToken(user._id, user.role);
 
     return {
