@@ -37,7 +37,7 @@ const signupUser = async ({ fullName, email, password }) => {
       );
       throw new Error("Verification email could not be sent");
     } else {
-      console.log("✅ Verification email successfully sent to:", email);
+      console.log("✅ V");
     }
 
     // Now that the email is successfully sent, create the user
@@ -47,10 +47,8 @@ const signupUser = async ({ fullName, email, password }) => {
       password: hashedPassword,
       verificationCode,
     });
-    console.log(verificationCode, "verification code");
 
     const token = generateToken(user._id, user.role);
-    console.log("Token generated:", token);
 
     return {
       success: true,
