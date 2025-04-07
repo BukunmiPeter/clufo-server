@@ -5,6 +5,9 @@ const crypto = require("crypto");
 const {
   sendVerificationEmail,
 } = require("../utils/emailFunctions/VerifyAccountEmail.js");
+const {
+  sendResetPasswordEmail,
+} = require("../utils/emailFunctions/resetCodeEmail.js");
 
 const generateRandomSixDigitCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -98,26 +101,25 @@ const requestPasswordReset = async (email) => {
   if (!user) {
     return { success: false, message: "User not found." };
   }
+  const resetCode = generateRandomSixDigitCode();
+  const emailSent = await sendResetPasswordEmail(email, resetCode);
 
+  if (!emailSent || emailSent.message !== "Queued. Thank you.") {
+    console.error("❌ Failed to send reset email for:", email, emailSent);
+    throw new Error("Reset email could not be sent");
+  } else {
+    console.log("✅ V");
+  }
   // Generate a unique reset code
-  const resetCode = crypto.randomBytes(20).toString("hex");
+
   user.resetPasswordCode = resetCode;
   user.resetPasswordExpires = Date.now() + 3600000; // Code expires in 1 hour
 
   await user.save();
 
-  // Send reset link via email
-  const resetLink = `${process.env.FRONTEND_URL}/reset-password?code=${resetCode}`;
-
-  console.log("resetcode", resetCode);
-  // await sendEmail(
-  //   user.email,
-  //   "Password Reset Request",
-  //   `Click the link to reset your password: ${resetLink}`
-  // );
-
   return { success: true, message: "Password reset link sent to email." };
 };
+
 const verifyResetEmailRequest = async (code) => {
   const user = await User.findOne({
     resetPasswordCode: code,

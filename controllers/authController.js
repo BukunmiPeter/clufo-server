@@ -102,6 +102,7 @@ const verifyResetCode = async (req, res) => {
 const resetUserPassword = async (req, res) => {
   try {
     const { code, newPassword } = req.body;
+    console.log(code, newPassword, "data");
     const result = await resetPassword(code, newPassword);
     return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
