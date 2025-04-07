@@ -26,7 +26,7 @@ const getAllMembersController = async (req, res) => {
   const { search, ...filters } = req.query;
 
   const response = await getAllMembers(filters, search);
-
+  d;
   res.status(response.success ? 200 : 400).json(response);
 };
 

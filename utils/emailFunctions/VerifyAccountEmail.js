@@ -5,13 +5,13 @@ async function sendVerificationEmail(email, verificationCode) {
   try {
     const sender = "Clufo <postmaster@mail.clufo.ch>";
     const subject = "Your Verification Code";
-    const verificationLink = `${FRONTEND_URL}/verify/${verificationCode}`;
 
     const messageTemplate = () => `
       <p>Hello,</p>
-      
-      <p>Click the link below to verify your account:</p>
-      <p><a href="${verificationLink}" target="_blank">Verify your email</a></p>
+      <p>Thank you for signing up with Clufo!</p>
+      <p>Please use the following code to verify your email address:</p>
+      <p style="font-size: 1.5em; margin-top: 10px; margin-bottom: 10px;">${verificationCode}</p>
+      <p>Enter this code on the verification page to activate your account.</p>
       <p>If you did not request this, please ignore this email.</p>
       <p>Thank you,</p>
       <p>Clufo Team</p>

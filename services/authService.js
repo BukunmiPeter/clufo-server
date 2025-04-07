@@ -6,6 +6,9 @@ const {
   sendVerificationEmail,
 } = require("../utils/emailFunctions/VerifyAccountEmail.js");
 
+const generateRandomSixDigitCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 const signupUser = async ({ fullName, email, password }) => {
   try {
     // Check if the user already exists
@@ -20,8 +23,8 @@ const signupUser = async ({ fullName, email, password }) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log("Password hashed successfully");
 
-    // Generate verification code
-    const verificationCode = crypto.randomBytes(20).toString("hex");
+    // Generate a random 6-digit verification code
+    const verificationCode = generateRandomSixDigitCode();
 
     // Don't create the user yet, wait until email verification is successful
     const emailSent = await sendVerificationEmail(email, verificationCode);
