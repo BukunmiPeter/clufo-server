@@ -4,6 +4,8 @@ const {
   requestPasswordReset,
   verifyResetEmailRequest,
   resetPassword,
+  logoutService,
+  refreshAccessTokenService,
 } = require("../services/authService.js");
 const {
   verifyUserService,
@@ -30,18 +32,85 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const result = await loginUser(req.body);
+    const { email, password } = req.body;
+    const result = await loginUser({ email, password });
 
     if (!result.success) {
-      return res.status(400).json(result); // Return 400 for failed login
+      return res.status(401).json(result);
     }
 
-    return res.status(200).json(result); // 200 for successful login
+    // Set refreshToken in cookie
+    res.cookie("refreshToken", result.data.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true in prod
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Only return accessToken + user data (don't include refreshToken in response body)
+    const {
+      refreshToken,
+      verificationCode,
+      resetPasswordCode,
+      resetPasswordExpires,
+      ...responseData
+    } = result.data;
+
+    return res.status(200).json({
+      success: true,
+      message: "Sign in successful",
+      data: responseData,
+    });
   } catch (error) {
-    console.error("Unexpected login error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+const refreshTokenController = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No refresh token provided" });
+    }
+
+    // Call the service to get the new access token
+    const newAccessToken = await refreshAccessTokenService(refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Failed to refresh token",
+    });
+  }
+};
+
+const logoutUser = async (req, res) => {
+  try {
+    await logoutService(req);
+
+    // Clear the refresh token cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "An internal server error occurred",
+      message: error.message || "Logout failed",
     });
   }
 };
@@ -116,6 +185,8 @@ const resetUserPassword = async (req, res) => {
 module.exports = {
   signup,
   login,
+  refreshTokenController,
+  logoutUser,
   verifyUser,
   resendVerification,
   requestReset,

@@ -8,58 +8,57 @@ const {
 const {
   sendResetPasswordEmail,
 } = require("../utils/emailFunctions/resetCodeEmail.js");
+const {
+  generateRandomSixDigitCode,
+} = require("../utils/generateSixDigitCode.js");
 
-const generateRandomSixDigitCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-const signupUser = async ({ fullName, email, password }) => {
+const signupUser = async ({ fullName, email, clubname, password }) => {
   try {
-    // Check if the user already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      console.log("User already exists:", email);
-      throw new Error("User already exists");
-    }
+    const lowercaseClubname = clubname.toLowerCase();
 
-    // Generate salt and hash the password
+    const userExistsByEmail = await User.findOne({ email });
+    if (userExistsByEmail)
+      throw new Error("User with this email already exists");
+
+    const clubnameExists = await User.findOne({
+      clubname: { $regex: new RegExp(`^${lowercaseClubname}$`, "i") },
+    });
+    if (clubnameExists) throw new Error("This clubname is already taken");
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    console.log("Password hashed successfully");
 
-    // Generate a random 6-digit verification code
     const verificationCode = generateRandomSixDigitCode();
 
-    // Don't create the user yet, wait until email verification is successful
     const emailSent = await sendVerificationEmail(email, verificationCode);
-
     if (!emailSent || emailSent.message !== "Queued. Thank you.") {
-      console.error(
-        "❌ Failed to send verification email for:",
-        email,
-        emailSent
-      );
       throw new Error("Verification email could not be sent");
-    } else {
-      console.log("✅ V");
     }
 
-    // Now that the email is successfully sent, create the user
     const user = await User.create({
       fullName,
       email,
+      clubname: lowercaseClubname,
       password: hashedPassword,
       verificationCode,
     });
 
-    const token = generateToken(user._id, user.role);
+    const { accessToken, refreshToken } = generateTokens(
+      user._id,
+      user.role,
+      "both"
+    );
 
     return {
       success: true,
       message: "User registered successfully. Please verify your email.",
-      data: { userId: user._id, token },
+      data: {
+        userId: user._id,
+        accessToken,
+        refreshToken,
+      },
     };
   } catch (error) {
-    console.error("Signup error:", error);
     return { success: false, message: error.message || "Signup failed" };
   }
 };
@@ -72,13 +71,18 @@ const loginUser = async ({ email, password }) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) throw new Error("Invalid credentials");
 
-    const { password: _, verified, ...otherProps } = user.toObject(); // Convert to plain object for safe spreading
-    const token = generateToken(user._id, user.role);
+    const { password: _, verified, ...otherProps } = user.toObject();
+
+    const { accessToken, refreshToken } = generateTokens(
+      user._id,
+      user.role,
+      "both"
+    );
 
     return {
       success: true,
       message: "Sign in successful",
-      data: { ...otherProps, verified, token },
+      data: { ...otherProps, verified, accessToken, refreshToken },
     };
   } catch (error) {
     return {
@@ -88,13 +92,81 @@ const loginUser = async ({ email, password }) => {
   }
 };
 
-// Token Generator
-const generateToken = (userId, role) => {
-  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
+const refreshAccessTokenService = async (refreshToken) => {
+  return new Promise((resolve, reject) => {
+    if (!refreshToken) {
+      return reject(new Error("No refresh token provided"));
+    }
+
+    // Verify the refresh token
+    jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET,
+      async (err, decoded) => {
+        if (err) {
+          console.error("JWT verification error:", err.message); // Log the specific error for debugging
+          return reject(new Error("Invalid or expired refresh token"));
+        }
+
+        // Ensure decoded has expected properties (e.g., id and role)
+        if (!decoded || !decoded.id || !decoded.role) {
+          return reject(new Error("Invalid refresh token payload"));
+        }
+
+        try {
+          // Find user by ID from decoded token
+          const user = await User.findById(decoded.id); // Assuming 'id' is stored in decoded token
+          if (!user) {
+            return reject(new Error("User not found"));
+          }
+
+          // Generate a new access token
+          const newAccessToken = generateTokens(user._id, user.role, "access");
+          resolve(newAccessToken); // Return the new access token
+        } catch (err) {
+          reject(new Error("Error fetching user or generating new token"));
+        }
+      }
+    );
   });
 };
 
+const logoutService = async (req) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      throw new Error("No refresh token provided");
+    }
+
+    // No DB actions needed — we just remove the cookie
+    return {
+      success: true,
+      message: "Logout successful",
+    };
+  } catch (error) {
+    throw new Error(error.message || "Logout failed");
+  }
+};
+// Token Generator
+const generateTokens = (userId, role, type) => {
+  const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: "1h", // Set expiration for access token
+  });
+
+  let refreshToken = null;
+  if (type === "both" || type === "refresh") {
+    refreshToken = jwt.sign(
+      { id: userId, role },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d", // Set expiration for refresh token
+      }
+    );
+  }
+
+  return { accessToken, refreshToken };
+};
 const requestPasswordReset = async (email) => {
   const user = await User.findOne({ email });
 
@@ -162,6 +234,9 @@ const resetPassword = async (code, newPassword) => {
 // Export functions using CommonJS
 module.exports = {
   signupUser,
+  generateTokens,
+  refreshAccessTokenService,
+  logoutService,
   loginUser,
   requestPasswordReset,
   verifyResetEmailRequest,

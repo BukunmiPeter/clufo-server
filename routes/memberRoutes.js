@@ -5,18 +5,29 @@ const {
   deleteMemberController,
   getMemberController,
   getAllMembersController,
+  inviteMemberController,
+  signupInvitedMemberController,
+  uploadFileController,
 } = require("../controllers/memberController");
+const adminMiddleware = require("../middlewares/adminMiddleware");
+const { upload } = require("../services/memberService");
 
 const router = express.Router();
 
-router.post("/members", addMemberController);
-router.put("/members/:id", updateMemberController);
-router.delete("/members/:id", deleteMemberController);
+router.post("/members", adminMiddleware, addMemberController);
+router.post("/invite-member", adminMiddleware, inviteMemberController);
+router.post("/signup-invited", signupInvitedMemberController);
+
+router.put("/members/:id", adminMiddleware, updateMemberController);
+router.delete("/members/:id", adminMiddleware, deleteMemberController);
 router.get("/members", getAllMembersController);
 router.get("/members/:id", getMemberController);
-router.get("/test", (req, res) => {
-  console.log("Test route hit!");
-  res.send("Test route working!");
-});
+router.post(
+  "/upload",
+  adminMiddleware,
+
+  upload.single("file"),
+  uploadFileController
+);
 
 module.exports = router;
