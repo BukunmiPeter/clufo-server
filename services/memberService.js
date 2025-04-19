@@ -18,8 +18,9 @@ const {
 const multer = require("multer");
 const xlsx = require("xlsx");
 const fs = require("fs");
+const csv = require("csv-parser");
 const path = require("path");
-const csv = require("csv-parse/sync");
+// const csv = require("csv-parse/sync");
 
 const processXLSXFile = (filePath) => {
   try {
@@ -33,9 +34,6 @@ const processXLSXFile = (filePath) => {
     // Convert the sheet to JSON format
     const jsonData = xlsx.utils.sheet_to_json(sheet);
 
-    // Log the raw data for debugging
-    console.log("Raw JSON data from XLSX:", jsonData);
-
     return jsonData;
   } catch (err) {
     console.error("Error processing XLSX file:", err.message);
@@ -46,11 +44,9 @@ const processCSVFile = (filePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
 
-    // Create a readable stream from the file path
     fs.createReadStream(filePath)
-      .pipe(csv())
+      .pipe(csv()) // Use the imported csv function here
       .on("data", (row) => {
-        // Push each row of the CSV data into the results array
         results.push(row);
       })
       .on("end", () => {
@@ -64,13 +60,7 @@ const processCSVFile = (filePath) => {
   });
 };
 
-const generateToken = (userId, role) => {
-  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
-  });
-};
-
-const addMember = async (memberData, adminClubname, adminId) => {
+const addMember = async (memberData, clubname, adminId) => {
   // Added adminId
   try {
     const [existingMember, existingUser] = await Promise.all([
@@ -93,7 +83,7 @@ const addMember = async (memberData, adminClubname, adminId) => {
       memberData.customFields = {};
     }
 
-    const newMember = await Member.create({ ...memberData, adminId }); // Include adminId
+    const newMember = await Member.create({ ...memberData, adminId, clubname }); // Include adminId
     console.log("New member created:", newMember);
 
     // --- User Signup Logic ---
@@ -102,7 +92,6 @@ const addMember = async (memberData, adminClubname, adminId) => {
     const hashedPassword = await bcrypt.hash(generatedPassword, salt);
 
     const fullName = `${memberData.firstName} ${memberData.lastName}`;
-    const lowercaseClubname = adminClubname.toLowerCase(); // Use admin's clubname
 
     // Check if user exists
     const userExists = await User.findOne({ email: memberData.email });
@@ -111,7 +100,7 @@ const addMember = async (memberData, adminClubname, adminId) => {
       const newUser = await User.create({
         fullName,
         email: memberData.email,
-        clubname: lowercaseClubname,
+        clubname: clubname,
         password: hashedPassword,
         role: "user",
         verified: true,
@@ -130,7 +119,7 @@ const addMember = async (memberData, adminClubname, adminId) => {
         memberData.email,
         fullName,
         generatedPassword,
-        lowercaseClubname
+        clubname
       ); // Implement this
 
       if (!emailSent || emailSent.message !== "Queued. Thank you.") {
@@ -195,16 +184,38 @@ const updateMember = async (id, updateData) => {
 
 const deleteMember = async (id) => {
   try {
-    const member = await Member.findByIdAndDelete(id);
+    const member = await Member.findById(id);
     if (!member) {
-      throw new Error("Member not found");
+      return { success: false, message: "Member not found" };
     }
-    return { success: true, message: "Member deleted successfully" };
+
+    const user = await User.findOneAndDelete({ email: member.email });
+    if (user) {
+      console.log("Associated user deleted:", user);
+    } else {
+      console.log(
+        "No associated user found for member with email:",
+        member.email
+      );
+    }
+
+    const deletedMember = await Member.findByIdAndDelete(id);
+    if (!deletedMember) {
+      return {
+        success: false,
+        message: "Error deleting member (member not found again)",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Member and associated user (if found) deleted successfully",
+    };
   } catch (error) {
     console.error("Delete member error:", error);
     return {
       success: false,
-      message: error.message || "Error deleting member",
+      message: error.message || "Error deleting member and associated user",
     };
   }
 };
@@ -251,7 +262,8 @@ const getMember = async (id) => {
   }
 };
 const inviteMember = async (data) => {
-  const { email, adminId, clubname, membershipType, team } = data;
+  const { email, adminId, clubname, membershipType, team, playerPosition } =
+    data;
 
   try {
     // Check if already invited
@@ -271,6 +283,7 @@ const inviteMember = async (data) => {
       invited: true,
       inviteCode,
       team,
+      playerPosition,
       status: "awaiting",
     });
 
@@ -301,11 +314,9 @@ const signupInvitedMemberService = async ({
   firstName,
   lastName,
   password,
-  age,
+  dob,
   fatherName,
   fatherContactNo,
-  motherName,
-  motherContactNo,
 }) => {
   try {
     // Check if user already exists
@@ -335,13 +346,12 @@ const signupInvitedMemberService = async ({
     }
 
     // Update member fields
-    member.age = age;
+    member.dob = dob;
     member.firstName = firstName;
     member.lastName = lastName;
     member.fatherName = fatherName || "";
     member.fatherContactNo = fatherContactNo || "";
-    member.motherName = motherName || "";
-    member.motherContactNo = motherContactNo || "";
+
     member.status = "probation";
     member.invited = false;
     member.inviteCode = null; // Invalidate the code after use
@@ -350,12 +360,12 @@ const signupInvitedMemberService = async ({
     // Hash password and create user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
+    const lowercaseClubname = member.clubname.toLowerCase();
     const newUser = await User.create({
       fullName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
       email,
       password: hashedPassword,
-      clubname: member.clubname.toLowerCase(),
+      clubname: lowercaseClubname,
       role: "user",
       verified: true,
     });

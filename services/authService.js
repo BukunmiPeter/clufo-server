@@ -98,31 +98,47 @@ const refreshAccessTokenService = async (refreshToken) => {
       return reject(new Error("No refresh token provided"));
     }
 
+    // Clean and check the token format
+    const cleanedToken = refreshToken.trim();
+
     // Verify the refresh token
     jwt.verify(
-      refreshToken,
+      cleanedToken,
       process.env.JWT_REFRESH_SECRET,
       async (err, decoded) => {
         if (err) {
-          console.error("JWT verification error:", err.message); // Log the specific error for debugging
-          return reject(new Error("Invalid or expired refresh token"));
+          console.error("❌ JWT verification error:", err.message);
+
+          // Check if the token is expired
+          if (err.name === "TokenExpiredError") {
+            return reject(new Error("Refresh token expired"));
+          }
+
+          return reject(new Error("Invalid or malformed refresh token"));
         }
 
-        // Ensure decoded has expected properties (e.g., id and role)
+        // console.log("🔐 Decoded JWT:", decoded);
+
         if (!decoded || !decoded.id || !decoded.role) {
           return reject(new Error("Invalid refresh token payload"));
         }
 
+        // Check if the token is expired manually (in case you want to check it independently)
+        const isTokenExpired = Date.now() / 1000 > decoded.exp;
+        if (isTokenExpired) {
+          return reject(new Error("Refresh token expired"));
+        }
+
         try {
-          // Find user by ID from decoded token
-          const user = await User.findById(decoded.id); // Assuming 'id' is stored in decoded token
+          const user = await User.findById(decoded.id);
           if (!user) {
             return reject(new Error("User not found"));
           }
 
-          // Generate a new access token
+          // Generate new access token
           const newAccessToken = generateTokens(user._id, user.role, "access");
-          resolve(newAccessToken); // Return the new access token
+          console.log(newAccessToken.accessToken, "new");
+          resolve(newAccessToken.accessToken);
         } catch (err) {
           reject(new Error("Error fetching user or generating new token"));
         }
@@ -151,7 +167,7 @@ const logoutService = async (req) => {
 // Token Generator
 const generateTokens = (userId, role, type) => {
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: "1h", // Set expiration for access token
+    expiresIn: "3m",
   });
 
   let refreshToken = null;

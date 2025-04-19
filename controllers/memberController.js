@@ -14,9 +14,9 @@ const fs = require("fs");
 
 const addMemberController = async (req, res) => {
   try {
-    const { adminClubname, adminId, ...memberData } = req.body;
+    const { clubname, adminId, ...memberData } = req.body;
 
-    const response = await addMember(memberData, adminClubname, adminId);
+    const response = await addMember(memberData, clubname, adminId);
 
     res.status(response.success ? 201 : 400).json(response);
   } catch (error) {

@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
-const StatusEnum = ["awaiting", "active", "probation", "onboarding"];
+// const StatusEnum = ["awaiting", "active", "probation", "onboarding"];
+
+const MembershipTypeEnum = ["player", "staff", "sponsor"];
 
 const memberSchema = new mongoose.Schema({
   adminId: {
@@ -40,7 +42,11 @@ const memberSchema = new mongoose.Schema({
   billingCountry: String,
   playerPosition: String,
   team: String,
-  membershipType: String,
+  membershipType: {
+    type: String,
+    enum: MembershipTypeEnum,
+    default: "player",
+  },
   membershipExpiryDate: String,
   paymentStat: String,
   invited: {
@@ -50,7 +56,7 @@ const memberSchema = new mongoose.Schema({
   inviteCode: { type: String, default: null },
   status: {
     type: String,
-    enum: StatusEnum,
+    // enum: StatusEnum,
     default: "awaiting",
   },
   customFields: {

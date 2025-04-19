@@ -11,6 +11,7 @@ const {
 } = require("../controllers/memberController");
 const adminMiddleware = require("../middlewares/adminMiddleware");
 const { upload } = require("../services/memberService");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ router.post("/signup-invited", signupInvitedMemberController);
 
 router.put("/members/:id", adminMiddleware, updateMemberController);
 router.delete("/members/:id", adminMiddleware, deleteMemberController);
-router.get("/members", getAllMembersController);
-router.get("/members/:id", getMemberController);
+router.get("/members", authMiddleware, getAllMembersController);
+router.get("/members/:id", authMiddleware, getMemberController);
 router.post(
   "/upload",
   adminMiddleware,

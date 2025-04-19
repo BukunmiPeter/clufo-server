@@ -49,7 +49,6 @@ const login = async (req, res) => {
 
     // Only return accessToken + user data (don't include refreshToken in response body)
     const {
-      refreshToken,
       verificationCode,
       resetPasswordCode,
       resetPasswordExpires,
