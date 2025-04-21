@@ -247,7 +247,7 @@ const getAllMembers = async (clubId, filters = {}, search = "") => {
       : {};
 
     const query = {
-      adminId: new mongoose.Types.ObjectId(clubId), // 👈 ensure it's the correct type
+      club: new mongoose.Types.ObjectId(clubId), // ✅ correct field name
       ...filters,
       ...searchFilter,
     };
