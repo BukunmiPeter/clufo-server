@@ -11,38 +11,49 @@ const {
 const {
   generateRandomSixDigitCode,
 } = require("../utils/generateSixDigitCode.js");
+const Club = require("../models/clubModel.js");
 
 const signupUser = async ({ fullName, email, clubname, password }) => {
   try {
     const lowercaseClubname = clubname.toLowerCase();
 
+    // 1. Check if email is already in use
     const userExistsByEmail = await User.findOne({ email });
     if (userExistsByEmail)
       throw new Error("User with this email already exists");
 
-    const clubnameExists = await User.findOne({
-      clubname: { $regex: new RegExp(`^${lowercaseClubname}$`, "i") },
+    // 2. Check if club already exists
+    const clubExists = await Club.findOne({
+      name: { $regex: new RegExp(`^${lowercaseClubname}$`, "i") },
     });
-    if (clubnameExists) throw new Error("This clubname is already taken");
+    if (clubExists) throw new Error("This clubname is already taken");
 
+    // 3. Create new club
+    const newClub = await Club.create({ name: lowercaseClubname });
+
+    // 4. Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // 5. Generate verification code
     const verificationCode = generateRandomSixDigitCode();
 
+    // 6. Send verification email
     const emailSent = await sendVerificationEmail(email, verificationCode);
     if (!emailSent || emailSent.message !== "Queued. Thank you.") {
       throw new Error("Verification email could not be sent");
     }
 
+    // 7. Create user with club ID
     const user = await User.create({
       fullName,
       email,
-      clubname: lowercaseClubname,
+      club: newClub._id,
       password: hashedPassword,
       verificationCode,
     });
 
+    // 8. Generate tokens
     const { accessToken, refreshToken } = generateTokens(
       user._id,
       user.role,
@@ -65,14 +76,18 @@ const signupUser = async ({ fullName, email, clubname, password }) => {
 
 const loginUser = async ({ email, password }) => {
   try {
-    const user = await User.findOne({ email });
+    // 1. Find user and populate club _id and name
+    const user = await User.findOne({ email }).populate("club", "name _id");
     if (!user) throw new Error("User not found");
 
+    // 2. Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) throw new Error("Invalid credentials");
 
-    const { password: _, verified, ...otherProps } = user.toObject();
+    // 3. Exclude password from returned object
+    const { password: _, verified, club, ...otherProps } = user.toObject();
 
+    // 4. Generate tokens
     const { accessToken, refreshToken } = generateTokens(
       user._id,
       user.role,
@@ -82,7 +97,16 @@ const loginUser = async ({ email, password }) => {
     return {
       success: true,
       message: "Sign in successful",
-      data: { ...otherProps, verified, accessToken, refreshToken },
+      data: {
+        ...otherProps,
+        verified,
+        club: {
+          clubId: club._id,
+          clubname: club.name,
+        },
+        accessToken,
+        refreshToken,
+      },
     };
   } catch (error) {
     return {

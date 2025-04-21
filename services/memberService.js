@@ -20,6 +20,7 @@ const xlsx = require("xlsx");
 const fs = require("fs");
 const csv = require("csv-parser");
 const path = require("path");
+const Club = require("../models/clubModel.js");
 // const csv = require("csv-parse/sync");
 
 const processXLSXFile = (filePath) => {
@@ -60,9 +61,9 @@ const processCSVFile = (filePath) => {
   });
 };
 
-const addMember = async (memberData, clubname, adminId) => {
-  // Added adminId
+const addMember = async (memberData, clubId) => {
   try {
+    // 1. Find existing member or user by email
     const [existingMember, existingUser] = await Promise.all([
       Member.findOne({ email: memberData.email }),
       User.findOne({ email: memberData.email }),
@@ -72,7 +73,7 @@ const addMember = async (memberData, clubname, adminId) => {
       throw new Error("User with this email already exists");
     }
 
-    // Ensure customFields is stored as an object
+    // 2. Ensure customFields is stored as an object
     if (
       memberData.customFields &&
       typeof memberData.customFields === "object" &&
@@ -83,44 +84,52 @@ const addMember = async (memberData, clubname, adminId) => {
       memberData.customFields = {};
     }
 
-    const newMember = await Member.create({ ...memberData, adminId, clubname }); // Include adminId
+    // 3. Find the club by clubId
+    const club = await Club.findById(clubId);
+    if (!club) throw new Error("Club not found");
+
+    const newMember = await Member.create({
+      ...memberData,
+      club: clubId,
+    });
+
     console.log("New member created:", newMember);
 
-    // --- User Signup Logic ---
+    // 4. Generate password
     const generatedPassword = generateRandomPassword(12); // Implement this
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(generatedPassword, salt);
 
     const fullName = `${memberData.firstName} ${memberData.lastName}`;
 
-    // Check if user exists
+    // 5. Create user if not exists
     const userExists = await User.findOne({ email: memberData.email });
-
     if (!userExists) {
       const newUser = await User.create({
         fullName,
         email: memberData.email,
-        clubname: clubname,
+        club: clubId, // Save clubId reference
         password: hashedPassword,
         role: "user",
         verified: true,
       });
+
       console.log("New user created for member:", newUser);
 
-      // Generate token
+      // 6. Generate tokens
       const { accessToken, refreshToken } = generateTokens(
         newUser._id,
         newUser.role,
         "both"
       );
 
-      // Send email with login details
+      // 7. Send email with login details
       const emailSent = await sendLoginDetailsEmail(
         memberData.email,
         fullName,
         generatedPassword,
-        clubname
-      ); // Implement this
+        club.name // Use club name for email
+      );
 
       if (!emailSent || emailSent.message !== "Queued. Thank you.") {
         console.error(
@@ -128,24 +137,23 @@ const addMember = async (memberData, clubname, adminId) => {
           memberData.email,
           emailSent
         );
-        // Consider whether to throw an error or just log it.  If email sending is critical, throw.
-        // throw new Error("Failed to send login details email");
       } else {
         console.log(
           "✅ Login details email sent successfully to:",
           memberData.email
         );
       }
+
       return {
         success: true,
         message:
-          "Member added and user account created successfully.  Login details sent to member's email.",
+          "Member added and user account created successfully. Login details sent to member's email.",
         data: {
           member: newMember,
           userId: newUser._id,
           accessToken,
           refreshToken,
-        }, // Include the token
+        },
       };
     } else {
       return {
@@ -220,10 +228,10 @@ const deleteMember = async (id) => {
   }
 };
 
-const getAllMembers = async (adminId, filters = {}, search = "") => {
+const getAllMembers = async (clubId, filters = {}, search = "") => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(adminId)) {
-      return { success: false, message: "Invalid adminId" };
+    if (!mongoose.Types.ObjectId.isValid(clubId)) {
+      return { success: false, message: "Invalid clubId" };
     }
 
     const searchRegex = search ? new RegExp(search, "i") : null;
@@ -239,7 +247,7 @@ const getAllMembers = async (adminId, filters = {}, search = "") => {
       : {};
 
     const query = {
-      adminId: new mongoose.Types.ObjectId(adminId), // 👈 ensure it's the correct type
+      adminId: new mongoose.Types.ObjectId(clubId), // 👈 ensure it's the correct type
       ...filters,
       ...searchFilter,
     };
@@ -262,8 +270,7 @@ const getMember = async (id) => {
   }
 };
 const inviteMember = async (data) => {
-  const { email, adminId, clubname, membershipType, team, playerPosition } =
-    data;
+  const { email, clubId, membershipType, team, playerPosition } = data;
 
   try {
     // Check if already invited
@@ -275,10 +282,15 @@ const inviteMember = async (data) => {
     // Generate a 6-digit invite code
     const inviteCode = generateRandomSixDigitCode();
 
+    // Fetch the club name using clubId
+    const club = await Club.findById(clubId);
+    if (!club) {
+      throw new Error("Club not found.");
+    }
+
     const member = await Member.create({
       email,
-      adminId,
-      clubname,
+      club: clubId,
       membershipType,
       invited: true,
       inviteCode,
@@ -287,8 +299,8 @@ const inviteMember = async (data) => {
       status: "awaiting",
     });
 
-    // Send invite email with the code
-    const emailSent = await sendInviteEmail(email, clubname, inviteCode);
+    // Send invite email with the club name
+    const emailSent = await sendInviteEmail(email, club.name, inviteCode);
 
     if (!emailSent) {
       throw new Error("Failed to send invitation email.");
@@ -329,7 +341,7 @@ const signupInvitedMemberService = async ({
     }
 
     // Find invited member
-    const member = await Member.findOne({ email });
+    const member = await Member.findOne({ email }).populate("club");
     if (!member || !member.invited) {
       return {
         success: false,
@@ -360,27 +372,28 @@ const signupInvitedMemberService = async ({
     // Hash password and create user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const lowercaseClubname = member.clubname.toLowerCase();
+
     const newUser = await User.create({
-      fullName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+      fullName: `${firstName || ""} ${lastName || ""}`.trim(),
       email,
       password: hashedPassword,
-      clubname: lowercaseClubname,
+      club: member.club._id, // Save club ID
       role: "user",
       verified: true,
     });
 
-    // Send welcome email
-    await sendJoinedClubEmail(email, member.firstName, member.clubname);
+    // Send welcome email with club name
+    await sendJoinedClubEmail(email, firstName, member.club.name);
 
     const { accessToken, refreshToken } = generateTokens(
       newUser._id,
       newUser.role,
       "both"
     );
+
     return {
       success: true,
-      message: `Signup successful. You have joined ${member.clubname}.`,
+      message: `Signup successful. You have joined ${member.club.name}.`,
       data: {
         memberId: member._id,
         userId: newUser._id,
@@ -396,6 +409,7 @@ const signupInvitedMemberService = async ({
     };
   }
 };
+
 const upload = multer({ dest: "uploads/" });
 const processFile = async (filePath, fileExt) => {
   try {
@@ -429,7 +443,7 @@ const processFile = async (filePath, fileExt) => {
   }
 };
 
-const saveMembers = async (membersData, adminId, clubname) => {
+const saveMembers = async (membersData, clubId) => {
   let successfulCount = 0;
   let failedMembers = [];
   let createdUsersCount = 0;
@@ -438,12 +452,30 @@ const saveMembers = async (membersData, adminId, clubname) => {
   try {
     console.log("Saving the following members:", membersData);
 
-    const validMembers = membersData.filter(
-      (m) => m.firstName && m.lastName && m.email
-    );
+    if (!Array.isArray(membersData) || membersData.length === 0) {
+      throw new Error("No member data provided.");
+    }
+
+    const validMembers = membersData.filter((m) => {
+      if (!m.firstName || !m.lastName || !m.email || !m.membershipType) {
+        failedMembers.push({
+          member: m,
+          error:
+            "Missing required fields: firstName, lastName, email, or membershipType",
+        });
+        return false;
+      }
+      return true;
+    });
 
     if (validMembers.length === 0) {
       throw new Error("No valid members found in the file.");
+    }
+
+    // Fetch club details once
+    const club = await Club.findById(clubId);
+    if (!club) {
+      throw new Error("Club not found.");
     }
 
     for (const memberData of validMembers) {
@@ -459,12 +491,12 @@ const saveMembers = async (membersData, adminId, clubname) => {
             member: memberData,
             error: "User with this email already exists",
           });
-          continue; // Skip to the next member
+          continue;
         }
 
+        // Create new member
         const newMember = await Member.create({
-          adminId,
-          clubname,
+          club: clubId,
           firstName: memberData.firstName,
           lastName: memberData.lastName,
           email: memberData.email,
@@ -481,31 +513,30 @@ const saveMembers = async (membersData, adminId, clubname) => {
         console.log("New member created:", newMember);
         successfulCount++;
 
-        // --- User Signup Logic (similar to addMember) ---
-        const generatedPassword = generateRandomPassword(12); // Implement this
+        // Generate password and create user
+        const generatedPassword = generateRandomPassword(12);
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(generatedPassword, salt);
 
         const fullName = `${memberData.firstName} ${memberData.lastName}`;
-        const lowercaseClubname = clubname.toLowerCase(); // Use the clubname passed to saveMembers
 
         const newUser = await User.create({
           fullName,
           email: memberData.email,
-          clubname: lowercaseClubname,
           password: hashedPassword,
+          club: clubId,
           role: "user",
           verified: true,
         });
         console.log("New user created for member:", newUser);
         createdUsersCount++;
 
-        // Send email with login details
+        // Send login details email
         const emailSent = await sendLoginDetailsEmail(
           memberData.email,
           fullName,
           generatedPassword,
-          lowercaseClubname
+          club.name
         );
 
         if (!emailSent || emailSent.message !== "Queued. Thank you.") {
@@ -519,14 +550,11 @@ const saveMembers = async (membersData, adminId, clubname) => {
             error: "Failed to send login details email",
           });
         } else {
-          console.log(
-            "✅ Login details email sent successfully to:",
-            memberData.email
-          );
+          console.log("✅ Login details email sent to:", memberData.email);
         }
       } catch (error) {
         console.error(
-          `Failed to insert member: ${memberData.firstName} ${memberData.lastName} or create user:`,
+          `Failed to process member: ${memberData.firstName} ${memberData.lastName}`,
           error.message
         );
         failedMembers.push({ member: memberData, error: error.message });
@@ -538,7 +566,7 @@ const saveMembers = async (membersData, adminId, clubname) => {
       message: `${successfulCount} members uploaded successfully. ${createdUsersCount} user accounts created and login details sent.`,
       insertedCount: successfulCount,
       createdUsersCount,
-      failedMembers: failedMembers,
+      failedMembers,
       failedUserCreations,
     };
   } catch (err) {
@@ -551,26 +579,23 @@ const saveMembers = async (membersData, adminId, clubname) => {
 };
 
 // Upload and process the members file
-const uploadMembers = async (filePath, fileExt, adminId, clubname) => {
+const uploadMembers = async (filePath, fileExt, clubId) => {
   try {
     const membersData = await processFile(filePath, fileExt);
 
-    const result = await saveMembers(membersData, adminId, clubname);
+    const result = await saveMembers(membersData, clubId);
     return result;
   } catch (err) {
     console.error("Upload failed:", err.message);
-    return { success: false, message: err.message }; // Return failure without throwing an error
+    return { success: false, message: err.message };
   } finally {
-    // Clean up file
     if (fs.existsSync(filePath)) {
-      console.log("Deleting temporary file:", filePath);
       try {
         fs.unlinkSync(filePath);
+        console.log("Deleted temporary file:", filePath);
       } catch (unlinkError) {
         console.error("Error deleting file:", unlinkError.message);
       }
-    } else {
-      console.log("File already deleted or does not exist:", filePath);
     }
   }
 };

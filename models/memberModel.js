@@ -1,16 +1,14 @@
 const mongoose = require("mongoose");
 
 // const StatusEnum = ["awaiting", "active", "probation", "onboarding"];
-
 const MembershipTypeEnum = ["player", "staff", "sponsor"];
 
 const memberSchema = new mongoose.Schema({
-  adminId: {
+  club: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "Club",
     required: true,
-  }, // Added adminId
-  clubname: { type: String, required: true },
+  },
   playerPic: String,
   firstName: String,
   lastName: String,
@@ -61,7 +59,7 @@ const memberSchema = new mongoose.Schema({
   },
   customFields: {
     type: Map,
-    of: mongoose.Schema.Types.Mixed, // Allows flexible values
+    of: mongoose.Schema.Types.Mixed,
   },
 });
 

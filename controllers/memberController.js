@@ -14,9 +14,9 @@ const fs = require("fs");
 
 const addMemberController = async (req, res) => {
   try {
-    const { clubname, adminId, ...memberData } = req.body;
+    const { clubId, ...memberData } = req.body;
 
-    const response = await addMember(memberData, clubname, adminId);
+    const response = await addMember(memberData, clubId);
 
     res.status(response.success ? 201 : 400).json(response);
   } catch (error) {
@@ -38,15 +38,15 @@ const deleteMemberController = async (req, res) => {
 };
 const getAllMembersController = async (req, res) => {
   const { search, ...filters } = req.query;
-  const adminId = req.headers.adminid;
+  const clubId = req.headers.clubId;
 
-  if (!adminId) {
+  if (!clubId) {
     return res
       .status(400)
-      .json({ success: false, message: "adminId is required" });
+      .json({ success: false, message: "clubId is required" });
   }
 
-  const response = await getAllMembers(adminId, filters, search);
+  const response = await getAllMembers(clubId, filters, search);
   res.status(response.success ? 200 : 400).json(response);
 };
 
