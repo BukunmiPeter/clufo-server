@@ -38,7 +38,7 @@ const deleteMemberController = async (req, res) => {
 };
 const getAllMembersController = async (req, res) => {
   const { search, ...filters } = req.query;
-  const clubId = req.headers.clubId;
+  const clubId = req.headers.clubid;
 
   if (!clubId) {
     return res
