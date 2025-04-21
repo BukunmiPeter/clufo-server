@@ -78,14 +78,19 @@ const signupInvitedMemberController = async (req, res) => {
 const uploadFileController = async (req, res) => {
   try {
     const file = req.file;
-    const adminId = req.headers.adminid; // Get adminId from request headers
-    const clubname = req.headers.clubname; // Get clubName from request headers
+    const clubId = req.headers.clubid; // Use clubId from headers
 
-    console.log("Uploaded file object:", file, adminId, clubname);
+    console.log("Uploaded file object:", file);
+    console.log("clubId:", clubId);
 
     if (!file) {
       console.log("No file was uploaded.");
       return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    if (!clubId) {
+      console.log("No clubId provided.");
+      return res.status(400).json({ error: "clubId is required" });
     }
 
     const filePath = file.path;
@@ -99,11 +104,10 @@ const uploadFileController = async (req, res) => {
       return res.status(400).json({ error: "Invalid file path or extension" });
     }
 
-    const result = await uploadMembers(filePath, fileExt, adminId, clubname);
+    const result = await uploadMembers(filePath, fileExt, clubId); // Pass clubId only
 
     console.log("File processing result:", result);
 
-    // Remove the file from the server after processing (check if file exists before deleting)
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
