@@ -191,7 +191,7 @@ const logoutService = async (req) => {
 // Token Generator
 const generateTokens = (userId, role, type) => {
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: "3m",
+    expiresIn: "1h",
   });
 
   let refreshToken = null;
