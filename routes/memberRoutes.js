@@ -21,7 +21,7 @@ router.post("/signup-invited", signupInvitedMemberController);
 
 router.put("/members/:id", adminMiddleware, updateMemberController);
 router.delete("/members/:id", adminMiddleware, deleteMemberController);
-router.get("/members", authMiddleware, getAllMembersController);
+router.get("/members", adminMiddleware, getAllMembersController);
 router.get("/members/:id", authMiddleware, getMemberController);
 router.post(
   "/upload",
