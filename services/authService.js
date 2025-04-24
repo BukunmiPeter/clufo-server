@@ -172,22 +172,19 @@ const refreshAccessTokenService = async (refreshToken) => {
 };
 
 const logoutService = async (req) => {
-  try {
-    const refreshToken = req.cookies?.refreshToken;
+  const refreshToken = req.cookies?.refreshToken;
 
-    if (!refreshToken) {
-      throw new Error("No refresh token provided");
-    }
-
-    // No DB actions needed — we just remove the cookie
-    return {
-      success: true,
-      message: "Logout successful",
-    };
-  } catch (error) {
-    throw new Error(error.message || "Logout failed");
+  if (!refreshToken) {
+    throw new Error("No refresh token provided");
   }
+
+  // You can perform additional logout logic here if needed
+  return {
+    success: true,
+    message: "Logout successful",
+  };
 };
+
 // Token Generator
 const generateTokens = (userId, role, type) => {
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {

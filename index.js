@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/authRoutes.js");
 const memberRoutes = require("./routes/memberRoutes.js");
+const teamRoutes = require("./routes/teamRoutes");
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use(express.json());
 
 // 🛣️ Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/teams", teamRoutes);
 app.use("/api", memberRoutes);
 
 // 🔌 Log important environment values

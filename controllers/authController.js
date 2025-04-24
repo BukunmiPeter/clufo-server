@@ -66,15 +66,15 @@ const login = async (req, res) => {
 };
 const refreshTokenController = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No refresh token provided" });
+      return res.status(400).json({
+        success: false,
+        message: "No refresh token provided in cookies",
+      });
     }
 
-    // Call the service to get the new access token
     const newAccessToken = await refreshAccessTokenService(refreshToken);
 
     return res.status(200).json({
@@ -83,7 +83,7 @@ const refreshTokenController = async (req, res) => {
       accessToken: newAccessToken,
     });
   } catch (error) {
-    console.error("Error refreshing token:", error);
+    console.error("Error refreshing token:", error.message);
     return res.status(403).json({
       success: false,
       message: error.message || "Failed to refresh token",
@@ -93,13 +93,14 @@ const refreshTokenController = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    await logoutService(req);
+    await logoutService(req); // handles validation and logic
 
-    // Clear the refresh token cookie
+    // Only controller touches res
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: false, // use false locally
+      sameSite: "lax",
+      path: "/", // MUST match how it was originally set
     });
 
     return res.status(200).json({
@@ -107,7 +108,7 @@ const logoutUser = async (req, res) => {
       message: "Logout successful",
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
       message: error.message || "Logout failed",
     });
