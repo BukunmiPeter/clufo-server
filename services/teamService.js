@@ -4,13 +4,11 @@ const Team = require("../models/teamModel");
 const createTeam = async (data) => {
   const { club, ...teamData } = data;
 
-  // Check if club exists
   const existingClub = await Club.findById(club);
   if (!existingClub) {
     throw new Error("Club not found");
   }
 
-  // Create and return team
   return await Team.create({ ...teamData, club });
 };
 

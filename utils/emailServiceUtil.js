@@ -23,10 +23,10 @@ async function sendEmail({ sender, recipient, subject, messageTemplate }) {
     });
 
     console.log("✅ Email sent successfully:", response);
-    return response; // ✅ Return the full response, not just `true`
+    return response;
   } catch (error) {
     console.error("❌ Failed to send email:", error);
-    return null; // ✅ Return `null` on failure for better error handling
+    return null;
   }
 }
 

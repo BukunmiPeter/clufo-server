@@ -5,7 +5,6 @@ function generateRandomPassword(length = 12) {
   const special = "!@#$%^&*()-_=+[]{};:,.<>?";
   const allChars = upper + lower + numbers + special;
 
-  // Ensure at least one from each category
   let password = [
     upper[Math.floor(Math.random() * upper.length)],
     lower[Math.floor(Math.random() * lower.length)],
@@ -13,12 +12,10 @@ function generateRandomPassword(length = 12) {
     special[Math.floor(Math.random() * special.length)],
   ];
 
-  // Fill the rest with random characters
   for (let i = password.length; i < length; i++) {
     password.push(allChars[Math.floor(Math.random() * allChars.length)]);
   }
 
-  // Shuffle the password to avoid predictable positions
   return password.sort(() => Math.random() - 0.5).join("");
 }
 

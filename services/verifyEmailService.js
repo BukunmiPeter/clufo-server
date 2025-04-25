@@ -18,7 +18,6 @@ const verifyUserService = async (code) => {
   return { success: true, message: "Email verified successfully!" };
 };
 
-// Service to resend verification email
 const resendVerificationService = async (email) => {
   const user = await User.findOne({ email });
 

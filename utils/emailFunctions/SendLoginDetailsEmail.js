@@ -31,13 +31,13 @@ async function sendLoginDetailsEmail(email, fullName, password, clubname) {
         email,
         emailSent
       );
-      return null; // Or you might want to throw an error here
+      return null;
     }
 
     return emailSent;
   } catch (error) {
     console.error("❌ Error sending login details email:", error.message);
-    return null; // Or throw error
+    return null;
   }
 }
 module.exports = { sendLoginDetailsEmail };

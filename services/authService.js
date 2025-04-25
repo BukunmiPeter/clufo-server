@@ -17,34 +17,27 @@ const signupUser = async ({ fullName, email, clubname, password }) => {
   try {
     const lowercaseClubname = clubname.toLowerCase();
 
-    // 1. Check if email is already in use
     const userExistsByEmail = await User.findOne({ email });
     if (userExistsByEmail)
       throw new Error("User with this email already exists");
 
-    // 2. Check if club already exists
     const clubExists = await Club.findOne({
       name: { $regex: new RegExp(`^${lowercaseClubname}$`, "i") },
     });
     if (clubExists) throw new Error("This clubname is already taken");
 
-    // 3. Create new club
     const newClub = await Club.create({ name: lowercaseClubname });
 
-    // 4. Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 5. Generate verification code
     const verificationCode = generateRandomSixDigitCode();
 
-    // 6. Send verification email
     const emailSent = await sendVerificationEmail(email, verificationCode);
     if (!emailSent || emailSent.message !== "Queued. Thank you.") {
       throw new Error("Verification email could not be sent");
     }
 
-    // 7. Create user with club ID
     const user = await User.create({
       fullName,
       email,
@@ -53,7 +46,6 @@ const signupUser = async ({ fullName, email, clubname, password }) => {
       verificationCode,
     });
 
-    // 8. Generate tokens
     const { accessToken, refreshToken } = generateTokens(
       user._id,
       user.role,
@@ -76,18 +68,14 @@ const signupUser = async ({ fullName, email, clubname, password }) => {
 
 const loginUser = async ({ email, password }) => {
   try {
-    // 1. Find user and populate club _id and name
     const user = await User.findOne({ email }).populate("club", "name _id");
     if (!user) throw new Error("User not found");
 
-    // 2. Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) throw new Error("Invalid credentials");
 
-    // 3. Exclude password from returned object
     const { password: _, verified, club, ...otherProps } = user.toObject();
 
-    // 4. Generate tokens
     const { accessToken, refreshToken } = generateTokens(
       user._id,
       user.role,
@@ -122,10 +110,8 @@ const refreshAccessTokenService = async (refreshToken) => {
       return reject(new Error("No refresh token provided"));
     }
 
-    // Clean and check the token format
     const cleanedToken = refreshToken.trim();
 
-    // Verify the refresh token
     jwt.verify(
       cleanedToken,
       process.env.JWT_REFRESH_SECRET,
@@ -133,7 +119,6 @@ const refreshAccessTokenService = async (refreshToken) => {
         if (err) {
           console.error("❌ JWT verification error:", err.message);
 
-          // Check if the token is expired
           if (err.name === "TokenExpiredError") {
             return reject(new Error("Refresh token expired"));
           }
@@ -141,13 +126,10 @@ const refreshAccessTokenService = async (refreshToken) => {
           return reject(new Error("Invalid or malformed refresh token"));
         }
 
-        // console.log("🔐 Decoded JWT:", decoded);
-
         if (!decoded || !decoded.id || !decoded.role) {
           return reject(new Error("Invalid refresh token payload"));
         }
 
-        // Check if the token is expired manually (in case you want to check it independently)
         const isTokenExpired = Date.now() / 1000 > decoded.exp;
         if (isTokenExpired) {
           return reject(new Error("Refresh token expired"));
@@ -159,7 +141,6 @@ const refreshAccessTokenService = async (refreshToken) => {
             return reject(new Error("User not found"));
           }
 
-          // Generate new access token
           const newAccessToken = generateTokens(user._id, user.role, "access");
           console.log(newAccessToken.accessToken, "new");
           resolve(newAccessToken.accessToken);
@@ -178,14 +159,12 @@ const logoutService = async (req) => {
     throw new Error("No refresh token provided");
   }
 
-  // You can perform additional logout logic here if needed
   return {
     success: true,
     message: "Logout successful",
   };
 };
 
-// Token Generator
 const generateTokens = (userId, role, type) => {
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
     expiresIn: "1h",
@@ -197,7 +176,7 @@ const generateTokens = (userId, role, type) => {
       { id: userId, role },
       process.env.JWT_REFRESH_SECRET,
       {
-        expiresIn: "7d", // Set expiration for refresh token
+        expiresIn: "7d",
       }
     );
   }
@@ -219,7 +198,6 @@ const requestPasswordReset = async (email) => {
   } else {
     console.log("✅ V");
   }
-  // Generate a unique reset code
 
   user.resetPasswordCode = resetCode;
   user.resetPasswordExpires = Date.now() + 3600000; // Code expires in 1 hour
@@ -255,11 +233,9 @@ const resetPassword = async (code, newPassword) => {
     return { success: false, message: "Invalid or expired reset code." };
   }
 
-  // Hash the new password
   const salt = await bcrypt.genSalt(10);
   user.password = await bcrypt.hash(newPassword, salt);
 
-  // Clear reset fields
   user.resetPasswordCode = null;
   user.resetPasswordExpires = null;
 
@@ -268,7 +244,6 @@ const resetPassword = async (code, newPassword) => {
   return { success: true, message: "Password reset successfully." };
 };
 
-// Export functions using CommonJS
 module.exports = {
   signupUser,
   generateTokens,

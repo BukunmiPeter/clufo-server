@@ -21,18 +21,14 @@ const fs = require("fs");
 const csv = require("csv-parser");
 const path = require("path");
 const Club = require("../models/clubModel.js");
-// const csv = require("csv-parse/sync");
 
 const processXLSXFile = (filePath) => {
   try {
-    // Read the file using xlsx library
     const workbook = xlsx.readFile(filePath);
 
-    // Get the first sheet
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
-    // Convert the sheet to JSON format
     const jsonData = xlsx.utils.sheet_to_json(sheet);
 
     return jsonData;
@@ -46,7 +42,7 @@ const processCSVFile = (filePath) => {
     const results = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv()) // Use the imported csv function here
+      .pipe(csv())
       .on("data", (row) => {
         results.push(row);
       })
@@ -63,7 +59,6 @@ const processCSVFile = (filePath) => {
 
 const addMember = async (memberData, clubId) => {
   try {
-    // 1. Find existing member or user by email
     const [existingMember, existingUser] = await Promise.all([
       Member.findOne({ email: memberData.email }),
       User.findOne({ email: memberData.email }),
@@ -73,7 +68,6 @@ const addMember = async (memberData, clubId) => {
       throw new Error("User with this email already exists");
     }
 
-    // 2. Ensure customFields is stored as an object
     if (
       memberData.customFields &&
       typeof memberData.customFields === "object" &&
@@ -84,7 +78,6 @@ const addMember = async (memberData, clubId) => {
       memberData.customFields = {};
     }
 
-    // 3. Find the club by clubId
     const club = await Club.findById(clubId);
     if (!club) throw new Error("Club not found");
 
@@ -95,20 +88,18 @@ const addMember = async (memberData, clubId) => {
 
     console.log("New member created:", newMember);
 
-    // 4. Generate password
-    const generatedPassword = generateRandomPassword(12); // Implement this
+    const generatedPassword = generateRandomPassword(12);
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(generatedPassword, salt);
 
     const fullName = `${memberData.firstName} ${memberData.lastName}`;
 
-    // 5. Create user if not exists
     const userExists = await User.findOne({ email: memberData.email });
     if (!userExists) {
       const newUser = await User.create({
         fullName,
         email: memberData.email,
-        club: clubId, // Save clubId reference
+        club: clubId,
         password: hashedPassword,
         role: "user",
         verified: true,
@@ -116,19 +107,17 @@ const addMember = async (memberData, clubId) => {
 
       console.log("New user created for member:", newUser);
 
-      // 6. Generate tokens
       const { accessToken, refreshToken } = generateTokens(
         newUser._id,
         newUser.role,
         "both"
       );
 
-      // 7. Send email with login details
       const emailSent = await sendLoginDetailsEmail(
         memberData.email,
         fullName,
         generatedPassword,
-        club.name // Use club name for email
+        club.name
       );
 
       if (!emailSent || emailSent.message !== "Queued. Thank you.") {
@@ -247,7 +236,7 @@ const getAllMembers = async (clubId, filters = {}, search = "") => {
       : {};
 
     const query = {
-      club: new mongoose.Types.ObjectId(clubId), // ✅ correct field name
+      club: new mongoose.Types.ObjectId(clubId),
       ...filters,
       ...searchFilter,
     };
@@ -273,16 +262,13 @@ const inviteMember = async (data) => {
   const { email, clubId, membershipType, team, playerPosition } = data;
 
   try {
-    // Check if already invited
     const existing = await Member.findOne({ email });
     if (existing) {
       throw new Error("This member has already been invited or exists.");
     }
 
-    // Generate a 6-digit invite code
     const inviteCode = generateRandomSixDigitCode();
 
-    // Fetch the club name using clubId
     const club = await Club.findById(clubId);
     if (!club) {
       throw new Error("Club not found.");
@@ -299,7 +285,6 @@ const inviteMember = async (data) => {
       status: "awaiting",
     });
 
-    // Send invite email with the club name
     const emailSent = await sendInviteEmail(email, club.name, inviteCode);
 
     if (!emailSent) {
@@ -331,7 +316,6 @@ const signupInvitedMemberService = async ({
   fatherContactNo,
 }) => {
   try {
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return {
@@ -340,7 +324,6 @@ const signupInvitedMemberService = async ({
       };
     }
 
-    // Find invited member
     const member = await Member.findOne({ email }).populate("club");
     if (!member || !member.invited) {
       return {
@@ -349,7 +332,6 @@ const signupInvitedMemberService = async ({
       };
     }
 
-    // Check if invite code matches
     if (member.inviteCode !== inviteCode) {
       return {
         success: false,
@@ -357,7 +339,6 @@ const signupInvitedMemberService = async ({
       };
     }
 
-    // Update member fields
     member.dob = dob;
     member.firstName = firstName;
     member.lastName = lastName;
@@ -366,10 +347,9 @@ const signupInvitedMemberService = async ({
 
     member.status = "probation";
     member.invited = false;
-    member.inviteCode = null; // Invalidate the code after use
+    member.inviteCode = null;
     await member.save();
 
-    // Hash password and create user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -377,12 +357,11 @@ const signupInvitedMemberService = async ({
       fullName: `${firstName || ""} ${lastName || ""}`.trim(),
       email,
       password: hashedPassword,
-      club: member.club._id, // Save club ID
+      club: member.club._id,
       role: "user",
       verified: true,
     });
 
-    // Send welcome email with club name
     await sendJoinedClubEmail(email, firstName, member.club.name);
 
     const { accessToken, refreshToken } = generateTokens(
@@ -415,7 +394,6 @@ const processFile = async (filePath, fileExt) => {
   try {
     let jsonData;
 
-    // Process the file based on its extension
     if (fileExt === ".xlsx") {
       jsonData = await processXLSXFile(filePath);
     } else if (fileExt === ".csv") {
@@ -424,10 +402,8 @@ const processFile = async (filePath, fileExt) => {
       throw new Error("Unsupported file type");
     }
 
-    // Log the file content after processing
     console.log("File processed successfully:", jsonData);
 
-    // Filter out rows with missing required fields
     jsonData = jsonData.filter(
       (row) => row.firstName && row.lastName && row.email
     );
@@ -472,7 +448,6 @@ const saveMembers = async (membersData, clubId) => {
       throw new Error("No valid members found in the file.");
     }
 
-    // Fetch club details once
     const club = await Club.findById(clubId);
     if (!club) {
       throw new Error("Club not found.");
@@ -480,7 +455,6 @@ const saveMembers = async (membersData, clubId) => {
 
     for (const memberData of validMembers) {
       try {
-        // Check if member or user with this email already exists
         const [existingMember, existingUser] = await Promise.all([
           Member.findOne({ email: memberData.email }),
           User.findOne({ email: memberData.email }),
@@ -494,7 +468,6 @@ const saveMembers = async (membersData, clubId) => {
           continue;
         }
 
-        // Create new member
         const newMember = await Member.create({
           club: clubId,
           firstName: memberData.firstName,
@@ -513,7 +486,6 @@ const saveMembers = async (membersData, clubId) => {
         console.log("New member created:", newMember);
         successfulCount++;
 
-        // Generate password and create user
         const generatedPassword = generateRandomPassword(12);
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(generatedPassword, salt);
@@ -531,7 +503,6 @@ const saveMembers = async (membersData, clubId) => {
         console.log("New user created for member:", newUser);
         createdUsersCount++;
 
-        // Send login details email
         const emailSent = await sendLoginDetailsEmail(
           memberData.email,
           fullName,
@@ -578,7 +549,6 @@ const saveMembers = async (membersData, clubId) => {
   }
 };
 
-// Upload and process the members file
 const uploadMembers = async (filePath, fileExt, clubId) => {
   try {
     const membersData = await processFile(filePath, fileExt);
