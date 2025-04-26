@@ -39,15 +39,18 @@ const login = async (req, res) => {
       return res.status(401).json(result);
     }
 
+    // Detect if request is secure (for proxies / production)
+    const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+
     // Set refreshToken in cookie
     res.cookie("refreshToken", result.data.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // true in prod
+      secure: process.env.NODE_ENV === "production" ? isSecure : false, // secure only if HTTPS
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    // Only return accessToken + user data (don't include refreshToken in response body)
+    // Remove sensitive fields from response
     const {
       verificationCode,
       resetPasswordCode,
@@ -64,6 +67,7 @@ const login = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 const refreshTokenController = async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
@@ -93,14 +97,21 @@ const refreshTokenController = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    await logoutService(req); // handles validation and logic
+    console.log("Cookies:", req.cookies);
 
-    // Only controller touches res
+    if (!req.cookies.refreshToken) {
+      throw new Error("No refresh token provided");
+    }
+
+    await logoutService(req);
+
+    const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: false, // use false locally
-      sameSite: "lax",
-      path: "/", // MUST match how it was originally set
+      secure: process.env.NODE_ENV === "production" ? isSecure : false,
+      sameSite: "strict",
+      path: "/",
     });
 
     return res.status(200).json({
