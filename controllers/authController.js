@@ -39,18 +39,16 @@ const login = async (req, res) => {
       return res.status(401).json(result);
     }
 
-    // Detect if request is secure (for proxies / production)
     const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
 
-    // Set refreshToken in cookie
     res.cookie("refreshToken", result.data.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" ? isSecure : false, // secure only if HTTPS
+      secure: process.env.NODE_ENV === "production" ? isSecure : false,
       sameSite: "strict",
+      path: "/", // Important: include this so `clearCookie` matches it
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    // Remove sensitive fields from response
     const {
       verificationCode,
       resetPasswordCode,
@@ -97,13 +95,13 @@ const refreshTokenController = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    console.log("Cookies:", req.cookies);
+    console.log("Cookies on logout:", req.cookies);
 
     if (!req.cookies.refreshToken) {
       throw new Error("No refresh token provided");
     }
 
-    await logoutService(req);
+    await logoutService(req); // your custom logout logic
 
     const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
 
@@ -111,7 +109,7 @@ const logoutUser = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production" ? isSecure : false,
       sameSite: "strict",
-      path: "/",
+      path: "/", // MUST match how it was set
     });
 
     return res.status(200).json({
