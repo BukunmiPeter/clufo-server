@@ -44,9 +44,9 @@ const login = async (req, res) => {
     res.cookie("refreshToken", result.data.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production" ? isSecure : false,
-      sameSite: "strict",
-      path: "/", // Important: include this so `clearCookie` matches it
+      sameSite: "None", // Set to "None" for cross-origin requests in production
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
     });
 
     const {
