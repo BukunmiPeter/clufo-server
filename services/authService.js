@@ -15,9 +15,10 @@ const Club = require("../models/clubModel.js");
 
 const signupUser = async ({ fullName, email, clubname, password }) => {
   try {
+    const lowercaseEmail = email.toLowerCase();
     const lowercaseClubname = clubname.toLowerCase();
 
-    const userExistsByEmail = await User.findOne({ email });
+    const userExistsByEmail = await User.findOne({ email: lowercaseEmail });
     if (userExistsByEmail)
       throw new Error("User with this email already exists");
 
@@ -33,14 +34,17 @@ const signupUser = async ({ fullName, email, clubname, password }) => {
 
     const verificationCode = generateRandomSixDigitCode();
 
-    const emailSent = await sendVerificationEmail(email, verificationCode);
+    const emailSent = await sendVerificationEmail(
+      lowercaseEmail,
+      verificationCode
+    );
     if (!emailSent || emailSent.message !== "Queued. Thank you.") {
       throw new Error("Verification email could not be sent");
     }
 
     const user = await User.create({
       fullName,
-      email,
+      email: lowercaseEmail,
       club: newClub._id,
       password: hashedPassword,
       verificationCode,
