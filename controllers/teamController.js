@@ -8,7 +8,9 @@ const { updateTeam } = require("../services/teamService");
 const createTeamController = async (req, res) => {
   try {
     const team = await createTeam(req.body);
-    res.status(201).json({ success: true, team });
+    res
+      .status(201)
+      .json({ success: true, message: "Team created successfully", team });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -21,7 +23,7 @@ const updateTeamController = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Team not found" });
-    res.json({ success: true, team });
+    res.json({ success: true, message: "Team updated successfully", team });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -47,7 +49,7 @@ const getTeamController = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Team not found" });
-    res.json({ success: true, team });
+    res.json({ success: true, message: "Team fetched successfully", team });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -56,7 +58,7 @@ const getTeamController = async (req, res) => {
 const getAllTeamsController = async (req, res) => {
   try {
     const teams = await getAllTeams();
-    res.json({ success: true, teams });
+    res.json({ success: true, message: "Teams fetched successfully", teams });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

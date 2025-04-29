@@ -2,24 +2,19 @@ const mongoose = require("mongoose");
 
 const teamSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    ageRange: {
-      type: [Number],
-      required: true,
-      validate: {
-        validator: (arr) => arr.length === 2 && arr[0] <= arr[1],
-        message:
-          "Age range must be an array of two numbers in ascending order.",
-      },
-    },
-    mainTeam: {
+    name: {
       type: String,
-      enum: ["A", "B", "C", "D"],
       required: true,
     },
-    publicDisplayName: { type: String, required: true },
-    coach: { type: String },
-    manager: { type: String },
+    nameNormalized: {
+      type: String,
+      required: true,
+    },
+    ageRange: [Number],
+    mainTeam: String,
+    publicDisplayName: String,
+    coach: String,
+    manager: String,
     club: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Club",
@@ -29,5 +24,13 @@ const teamSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Team = mongoose.model("Team", teamSchema);
-module.exports = Team;
+// Create a unique index on normalized name + club
+teamSchema.index({ nameNormalized: 1, club: 1 }, { unique: true });
+
+// Always set nameNormalized before saving
+teamSchema.pre("save", function (next) {
+  this.nameNormalized = this.name.toLowerCase();
+  next();
+});
+
+module.exports = mongoose.model("Team", teamSchema);

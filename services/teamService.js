@@ -1,15 +1,25 @@
 const Club = require("../models/clubModel");
 const Team = require("../models/teamModel");
-
 const createTeam = async (data) => {
-  const { club, ...teamData } = data;
+  const { club, name, ...teamData } = data;
 
   const existingClub = await Club.findById(club);
   if (!existingClub) {
     throw new Error("Club not found");
   }
 
-  return await Team.create({ ...teamData, club });
+  const nameNormalized = name.toLowerCase();
+
+  const existingTeam = await Team.findOne({
+    club,
+    nameNormalized,
+  });
+
+  if (existingTeam) {
+    throw new Error("A team with this name already exists in the club.");
+  }
+
+  return await Team.create({ ...teamData, name, nameNormalized, club });
 };
 
 const updateTeam = async (id, data) => {
