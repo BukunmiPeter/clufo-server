@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const volunteerSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
+    email: { type: String, unique: true },
     skills: { type: [String], default: [] },
     profilePic: { type: String },
   },

@@ -4,7 +4,13 @@ const eventService = require("../services/eventService");
 exports.createEvent = async (req, res) => {
   try {
     const event = await eventService.createEvent(req.body);
-    res.status(201).json({ success: true, data: event });
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "Event created successfully",
+        data: event,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
@@ -23,7 +29,11 @@ exports.updateEvent = async (req, res) => {
         .json({ success: false, message: "Event not found" });
     }
 
-    res.status(200).json({ success: true, data: updatedEvent });
+    res.status(200).json({
+      success: true,
+      message: "Event updated successfully",
+      data: updatedEvent,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
@@ -63,7 +73,11 @@ exports.getEventById = async (req, res) => {
         .json({ success: false, message: "Event not found" });
     }
 
-    res.status(200).json({ success: true, data: event });
+    res.status(200).json({
+      success: true,
+      message: "Event fetched successfully",
+      data: event,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
@@ -78,7 +92,11 @@ exports.getAllEventsByClubId = async (req, res) => {
 
     const events = await eventService.getAllEventsByClubId(clubId, status);
 
-    res.status(200).json({ success: true, data: events });
+    res.status(200).json({
+      success: true,
+      message: "Events fetched successfully",
+      data: events,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
