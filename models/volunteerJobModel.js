@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const volunteerJobSchema = new mongoose.Schema(
   {
@@ -35,4 +35,5 @@ const volunteerJobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("VolunteerJob", volunteerJobSchema);
+const VolunteerJob = mongoose.model("VolunteerJob", volunteerJobSchema);
+module.exports = VolunteerJob;

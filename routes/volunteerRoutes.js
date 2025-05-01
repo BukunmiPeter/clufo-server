@@ -1,4 +1,4 @@
-import express from "express";
+const express = require("express");
 
 const volunteerController = require("../controllers/volunteerController");
 
@@ -9,4 +9,4 @@ router.get("/", volunteerController.getAllVolunteers);
 router.get("/:id", volunteerController.getVolunteerById);
 router.delete("/:id", volunteerController.deleteVolunteer);
 
-export default router;
+module.exports = router;
