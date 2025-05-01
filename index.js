@@ -8,6 +8,8 @@ const authRoutes = require("./routes/authRoutes.js");
 const memberRoutes = require("./routes/memberRoutes.js");
 const teamRoutes = require("./routes/teamRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const volunteerJobRoutes = require("./routes/volunteerJobRoutes");
+const volunteerRoutes = require("./routes/volunteerRoutes");
 dotenv.config();
 
 const app = express();
@@ -36,6 +38,8 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/volunteers", volunteerRoutes);
+app.use("/api/volunteersjobs", volunteerJobRoutes);
 app.use("/api", memberRoutes);
 
 // 🔌 Log important environment values
