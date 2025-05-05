@@ -7,6 +7,8 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/authRoutes.js");
 const memberRoutes = require("./routes/memberRoutes.js");
 const teamRoutes = require("./routes/teamRoutes");
+
+const subteamRoutes = require("./routes/subteamRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const volunteerJobRoutes = require("./routes/volunteerJobRoutes");
 const volunteerRoutes = require("./routes/volunteerRoutes");
@@ -37,6 +39,7 @@ app.use(express.json());
 // 🛣️ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/subteams", subteamRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/volunteers", volunteerRoutes);
 app.use("/api/volunteersjobs", volunteerJobRoutes);

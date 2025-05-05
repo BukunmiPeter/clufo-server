@@ -17,6 +17,7 @@ exports.getAllVolunteers = async () => {
 };
 
 exports.getVolunteerById = async (id) => {
+  ``;
   return await Volunteer.findById(id);
 };
 

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const teamSchema = new mongoose.Schema(
+const subteamSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -13,10 +13,12 @@ const teamSchema = new mongoose.Schema(
     ageRange: [Number],
 
     publicDisplayName: String,
+    coach: String,
+    manager: String,
 
-    club: {
+    mainTeam: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Club",
+      ref: "Team",
       required: true,
     },
   },
@@ -24,12 +26,12 @@ const teamSchema = new mongoose.Schema(
 );
 
 // Create a unique index on normalized name + club
-teamSchema.index({ nameNormalized: 1, club: 1 }, { unique: true });
+subteamSchema.index({ nameNormalized: 1, club: 1 }, { unique: true });
 
 // Always set nameNormalized before saving
-teamSchema.pre("save", function (next) {
+subteamSchema.pre("save", function (next) {
   this.nameNormalized = this.name.toLowerCase();
   next();
 });
 
-module.exports = mongoose.model("Team", teamSchema);
+module.exports = mongoose.model("Subteam", subteamSchema);
